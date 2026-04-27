@@ -6,6 +6,26 @@ import { motion } from 'framer-motion';
 
 interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
 
+async function getApiError(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`;
+
+  try {
+    const payload = await response.json();
+    if (typeof payload?.error === 'string' && payload.error.trim()) {
+      message = payload.error;
+    }
+  } catch {}
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) {
+      message = `${message} Retry in ${retryAfter}s.`;
+    }
+  }
+
+  return message;
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -41,6 +61,10 @@ export default function IdeationPipeline() {
         body: JSON.stringify({ niche }),
       });
 
+      if (!response.ok) {
+        throw new Error(await getApiError(response));
+      }
+
       if (!response.body) throw new Error('No readable stream');
 
       const reader = response.body.getReader();
@@ -61,8 +85,9 @@ export default function IdeationPipeline() {
           } catch {}
         }
       }
-    } catch {
-      setLogs(prev => [...prev, '❌ Failed to connect to backend.']);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to connect to backend.';
+      setLogs(prev => [...prev, `❌ ${message}`]);
       setIsRunning(false);
     }
   };

@@ -5,8 +5,9 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: Request) {
   try {
-    const { sourceUrl } = await request.json();
+    const { sourceUrl, generateTextPost = true, generateCarousel = true } = await request.json();
     if (!sourceUrl) return new Response(JSON.stringify({ error: 'Source URL is required' }), { status: 400 });
+    if (!generateTextPost && !generateCarousel) return new Response(JSON.stringify({ error: 'Select at least one output format' }), { status: 400 });
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -40,15 +41,17 @@ export async function POST(request: Request) {
             send('Note: Could not fetch full page content. Using URL context only.');
           }
 
-          send('Generating LinkedIn text post...');
+          let textPost = '';
+          if (generateTextPost) {
+            send('Generating LinkedIn text post...');
 
-          const textPostResponse = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 600,
-            messages: [
-              {
-                role: 'user',
-                content: `You are a LinkedIn ghostwriter. Repurpose the following web content into a viral LinkedIn text post.
+            const textPostResponse = await client.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 600,
+              messages: [
+                {
+                  role: 'user',
+                  content: `You are a LinkedIn ghostwriter. Repurpose the following web content into a viral LinkedIn text post.
 
 SOURCE URL: ${sourceUrl}
 CONTENT EXCERPT: ${pageText.slice(0, 3000)}
@@ -62,27 +65,30 @@ INSTRUCTIONS:
 - Do NOT use: delve, testament, fast-paced, landscape, navigating, crucial
 
 Output ONLY the LinkedIn post text.`,
-              },
-            ],
-          });
+                },
+              ],
+            });
 
-          const textPost = textPostResponse.content[0].type === 'text' ? textPostResponse.content[0].text : '';
+            textPost = textPostResponse.content[0].type === 'text' ? textPostResponse.content[0].text : '';
 
-          send('');
-          send('─────────── TEXT POST ───────────');
-          for (const line of textPost.split('\n')) send(line);
-          send('─────────────────────────────────');
+            send('');
+            send('─────────── TEXT POST ───────────');
+            for (const line of textPost.split('\n')) send(line);
+            send('─────────────────────────────────');
+          }
 
-          send('');
-          send('Generating Carousel slide copy...');
+          let carousel = '';
+          if (generateCarousel) {
+            send('');
+            send('Generating Carousel slide copy...');
 
-          const carouselResponse = await client.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 700,
-            messages: [
-              {
-                role: 'user',
-                content: `From the same source content, create a 7-slide LinkedIn carousel outline.
+            const carouselResponse = await client.messages.create({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 700,
+              messages: [
+                {
+                  role: 'user',
+                  content: `From the same source content, create a 7-slide LinkedIn carousel outline.
 
 SOURCE URL: ${sourceUrl}
 CONTENT: ${pageText.slice(0, 2000)}
@@ -92,16 +98,22 @@ Slide X: [Headline — max 8 words]
 Body: [2-3 supporting bullet points]
 
 Start with a hook slide and end with a CTA slide. Output ONLY the slide structure.`,
-              },
-            ],
-          });
+                },
+              ],
+            });
 
-          const carousel = carouselResponse.content[0].type === 'text' ? carouselResponse.content[0].text : '';
+            carousel = carouselResponse.content[0].type === 'text' ? carouselResponse.content[0].text : '';
 
-          send('');
-          send('────────── CAROUSEL COPY ──────────');
-          for (const line of carousel.split('\n')) send(line);
-          send('────────────────────────────────────');
+            send('');
+            send('────────── CAROUSEL COPY ──────────');
+            for (const line of carousel.split('\n')) send(line);
+            send('────────────────────────────────────');
+          }
+
+          const formatCount = (generateTextPost ? 1 : 0) + (generateCarousel ? 1 : 0);
+          const formatLabel = formatCount === 1
+            ? (generateTextPost ? 'text post' : 'carousel')
+            : '2 formats';
 
           send('');
           send('Saving repurposed content to Notion...');
@@ -111,9 +123,9 @@ Start with a hook slide and end with a CTA slide. Output ONLY the slide structur
               textPost,
               carouselOutline: carousel,
             });
-            send('✅ Content repurposed into 2 formats and saved to Notion.');
+            send(`✅ Content repurposed into ${formatLabel} and saved to Notion.`);
           } catch (notionErr: any) {
-            send('✅ Content successfully repurposed into 2 formats.');
+            send(`✅ Content successfully repurposed into ${formatLabel}.`);
             console.error('[repurposing] Notion save failed:', notionErr.message);
           }
 

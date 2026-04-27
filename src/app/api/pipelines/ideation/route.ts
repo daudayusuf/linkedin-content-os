@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { saveIdeationHooks } from '@/lib/notion';
+import { getResearchContext } from '@/lib/research';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -7,6 +8,8 @@ export async function POST(request: Request) {
   try {
     const { niche } = await request.json();
     if (!niche) return new Response(JSON.stringify({ error: 'Niche is required' }), { status: 400 });
+
+    const researchContext = getResearchContext();
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -19,6 +22,10 @@ export async function POST(request: Request) {
           send(`Target Niche: ${niche}`);
           send('Querying Claude for trending topics and hook ideas...');
 
+          if (researchContext) {
+            send('Injecting niche research context...');
+          }
+
           const response = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 1500,
@@ -26,7 +33,7 @@ export async function POST(request: Request) {
               {
                 role: 'user',
                 content: `You are a LinkedIn content strategist specializing in the "${niche}" niche.
-
+${researchContext ? `\nNICHE RESEARCH DATA (use this to tailor hooks to the real ICP, competitors, and market gaps):\n${researchContext}\n` : ''}
 Generate 10 highly engaging LinkedIn post hook ideas based on current trends and pain points in this niche. Each hook should be provocative, specific, and scroll-stopping.
 
 Format your response as a numbered list. For each idea, provide:

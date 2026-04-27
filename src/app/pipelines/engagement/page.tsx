@@ -4,6 +4,26 @@ import { useState, useEffect } from 'react';
 import { Activity, Play, Terminal, UserPlus, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+async function getApiError(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`;
+
+  try {
+    const payload = await response.json();
+    if (typeof payload?.error === 'string' && payload.error.trim()) {
+      message = payload.error;
+    }
+  } catch {}
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) {
+      message = `${message} Retry in ${retryAfter}s.`;
+    }
+  }
+
+  return message;
+}
+
 export default function EngagementPipeline() {
   const [targetAccount, setTargetAccount] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -31,6 +51,10 @@ export default function EngagementPipeline() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetAccount })
       });
+
+      if (!response.ok) {
+        throw new Error(await getApiError(response));
+      }
 
       if (!response.body) throw new Error('No readable stream available');
 
@@ -63,7 +87,8 @@ export default function EngagementPipeline() {
       }
     } catch (error) {
       const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
-      setLogs(prev => [...prev, { text: '❌ Failed to connect to backend server.', time: timeStr }]);
+      const message = error instanceof Error ? error.message : 'Failed to connect to backend server.';
+      setLogs(prev => [...prev, { text: `❌ ${message}`, time: timeStr }]);
       setIsRunning(false);
     }
   };

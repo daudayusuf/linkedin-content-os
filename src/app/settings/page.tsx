@@ -1,6 +1,54 @@
 'use client';
 
-import { Key, Save, Database, Workflow, Shield } from 'lucide-react';
+import { Key, Database, Workflow, Shield, AlertTriangle, CheckCircle2 } from 'lucide-react';
+
+const ENV_VARS: { section: string; icon: React.ReactNode; color: string; vars: { name: string; description: string; example: string }[] }[] = [
+  {
+    section: 'Trigger.dev',
+    icon: <Workflow className="w-5 h-5 text-blue-400" />,
+    color: 'blue',
+    vars: [
+      { name: 'TRIGGER_SECRET_KEY', description: 'Background job runner secret', example: 'tr_prod_...' },
+    ],
+  },
+  {
+    section: 'AI Providers',
+    icon: <Shield className="w-5 h-5 text-purple-400" />,
+    color: 'purple',
+    vars: [
+      { name: 'ANTHROPIC_API_KEY', description: 'Claude (Sonnet) for all pipelines', example: 'sk-ant-...' },
+      { name: 'OPENROUTER_API_KEY', description: 'OpenRouter fallback / GPT-4o', example: 'sk-or-...' },
+      { name: 'GROQ_API_KEY', description: 'Groq fast inference', example: 'gsk_...' },
+    ],
+  },
+  {
+    section: 'Scraping & Data',
+    icon: <Key className="w-5 h-5 text-amber-400" />,
+    color: 'amber',
+    vars: [
+      { name: 'RAPIDAPI_KEY', description: 'LinkedIn post scraper (fresh-linkedin-profile-data)', example: 'xxxxxx...' },
+      { name: 'SCRAPINGDOG_API_KEY', description: 'LinkedIn profile + page scraper', example: '69e1...' },
+    ],
+  },
+  {
+    section: 'Notion',
+    icon: <Database className="w-5 h-5 text-emerald-400" />,
+    color: 'emerald',
+    vars: [
+      { name: 'NOTION_API_KEY', description: 'Notion integration token', example: 'ntn_...' },
+      { name: 'NOTION_PARENT_PAGE_ID', description: 'Root page where databases are auto-created', example: '34c401...' },
+    ],
+  },
+  {
+    section: 'Email Delivery',
+    icon: <CheckCircle2 className="w-5 h-5 text-rose-400" />,
+    color: 'rose',
+    vars: [
+      { name: 'GMAIL_FROM_ADDRESS', description: 'Gmail address for audit email delivery', example: 'you@gmail.com' },
+      { name: 'GMAIL_APP_PASSWORD', description: 'Gmail App Password (NOT account password — generate at myaccount.google.com/apppasswords)', example: 'xxxx xxxx xxxx xxxx' },
+    ],
+  },
+];
 
 export default function SettingsPage() {
   return (
@@ -13,79 +61,41 @@ export default function SettingsPage() {
           System Settings & API Keys
         </h1>
         <p className="text-slate-400 mt-2 text-lg">
-          Manage your external integrations and environment variables.
+          Environment variables required to run the content OS.
         </p>
       </div>
 
-      <div className="space-y-8">
-        
-        {/* Trigger.dev Config */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-            <Workflow className="w-5 h-5 text-blue-400" /> Trigger.dev (Backend Workflows)
-          </h2>
-          <p className="text-sm text-slate-400 mb-6">Required for securely running background Python scripts on Vercel.</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">Secret Key (TRIGGER_SECRET_KEY)</label>
-              <input type="password" placeholder="tr_test_xxxxxxxx" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-blue-500 transition-all" />
+      <div className="mb-6 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex gap-4">
+        <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-amber-300 mb-1">Keys are server-side only</p>
+          <p className="text-sm text-slate-400">
+            All API keys are configured in <code className="text-amber-300 bg-slate-800 px-1.5 py-0.5 rounded text-xs">frontend/.env</code> and read by the server at runtime via <code className="text-amber-300 bg-slate-800 px-1.5 py-0.5 rounded text-xs">process.env</code>. They are never exposed to the browser. To update a key, edit the <code className="text-amber-300 bg-slate-800 px-1.5 py-0.5 rounded text-xs">.env</code> file and restart the server.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {ENV_VARS.map((section) => (
+          <div key={section.section} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              {section.icon} {section.section}
+            </h2>
+            <div className="space-y-3">
+              {section.vars.map((v) => (
+                <div key={v.name} className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 items-start">
+                  <code className="text-xs font-mono bg-slate-800 text-slate-200 px-2 py-1 rounded mt-0.5 whitespace-nowrap">
+                    {v.name}
+                  </code>
+                  <div>
+                    <p className="text-sm text-slate-300">{v.description}</p>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">e.g. {v.example}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-
-        {/* AI Providers */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-purple-400" /> AI Providers
-          </h2>
-          <p className="text-sm text-slate-400 mb-6">Keys for local LLM inference and scraping.</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">OpenAI API Key (GPT-4o)</label>
-              <input type="password" placeholder="sk-..." className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 transition-all" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">Google Gemini API Key</label>
-              <input type="password" placeholder="AIzaSy..." className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 transition-all" />
-            </div>
-             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">RapidAPI Key (LinkedIn Scraper)</label>
-              <input type="password" placeholder="xxxxxxxxxxxxxxxxx" className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 transition-all" />
-            </div>
-          </div>
-        </div>
-
-        {/* Databases */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2">
-            <Database className="w-5 h-5 text-emerald-400" /> Notion Database Integrations
-          </h2>
-          <p className="text-sm text-slate-400 mb-6">Sync your generated content directly to Notion.</p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-2">Notion Integration Token</label>
-              <input type="password" placeholder="secret_..." className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 transition-all" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">Drafts Database ID</label>
-                <input type="text" placeholder="..." className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 transition-all" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-2">CRM Database ID</label>
-                <input type="text" placeholder="..." className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500 transition-all" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all">
-          <Save className="w-5 h-5" /> Save Configuration
-        </button>
-
+        ))}
       </div>
     </div>
   );

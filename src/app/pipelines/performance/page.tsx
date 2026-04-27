@@ -16,7 +16,7 @@ export default function PerformancePipeline() {
           Pipeline 5b: Performance Analysis
         </h1>
         <p className="text-slate-400 mt-2 text-lg">
-          Generate weekly and monthly LinkedIn performance snapshots and identify your best-performing content patterns.
+          Aggregates your LinkedIn post metrics, generates weekly and monthly performance snapshots, and identifies your best-performing content patterns.
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function PerformancePipeline() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-4">How to Run</h2>
           <p className="text-slate-300 leading-relaxed">
-            Execute <code className="text-cyan-400 bg-slate-950 px-1.5 py-0.5 rounded">python tools/run_pipeline.py</code> from the '5b. Performance Analysis Snapshot & Metrics' folder. Outputs are saved as markdown reports in the outputs/ directory.
+            To run this pipeline, execute <code className="text-cyan-400 bg-slate-950 px-1.5 py-0.5 rounded">python tools/run_pipeline.py</code> from the 5b Performance Analysis folder. Results are saved to the outputs/ directory.
           </p>
         </div>
 

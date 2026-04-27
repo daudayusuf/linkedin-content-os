@@ -16,7 +16,7 @@ export default function VisualsPipeline() {
           Pipeline 4: Visuals & Graphics
         </h1>
         <p className="text-slate-400 mt-2 text-lg">
-          Generate carousel graphics, post banners, and branded visual assets for LinkedIn using the Canva API.
+          Generates carousel graphics, post banners, and branded visual assets for your LinkedIn content using the Canva API.
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function VisualsPipeline() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-4">Status</h2>
           <p className="text-slate-300 leading-relaxed">
-            Canva API integration is in development. Credentials are being configured. This pipeline will auto-generate branded visuals once setup is complete.
+            Canva API integration is being configured. This pipeline will generate branded visuals automatically once the API credentials are set up.
           </p>
         </div>
 

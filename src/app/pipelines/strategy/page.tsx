@@ -16,7 +16,7 @@ export default function StrategyPipeline() {
           Pipeline 2: Content Strategy
         </h1>
         <p className="text-slate-400 mt-2 text-lg">
-          Build 7-90 day actionable content strategies grounded in your market research, ICP, and competitor analysis.
+          Builds 7-90 day actionable content strategies grounded in your market research, ICP, and competitor analysis. Generates a full execution checklist.
         </p>
       </div>
 
@@ -24,7 +24,7 @@ export default function StrategyPipeline() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-4">How to Run</h2>
           <p className="text-slate-300 leading-relaxed">
-            Execute <code className="text-emerald-400 bg-slate-950 px-1.5 py-0.5 rounded">python tools/run_pipeline.py</code> from the '2. Content Strategy Planning and Building' folder. Requires Pipeline 1 (Market Research) outputs to exist first.
+            Run from: Full Content Pipeline/2. Content Strategy Planning and Building/ using <code className="text-emerald-400 bg-slate-950 px-1.5 py-0.5 rounded">python tools/run_pipeline.py</code>
           </p>
         </div>
 

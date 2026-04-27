@@ -1,12 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { saveGeneratedPost } from '@/lib/notion';
+import { getResearchContext } from '@/lib/research';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: Request) {
   try {
-    const { topic, tone } = await request.json();
+    const { topic, tone, enforceBlacklist = true } = await request.json();
     if (!topic) return new Response(JSON.stringify({ error: 'Topic is required' }), { status: 400 });
+
+    const researchContext = getResearchContext();
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -27,6 +30,10 @@ export async function POST(request: Request) {
             'Actionable Step-by-Step': 'Write as a practical framework with numbered steps. Focus on immediate value. Each step should be specific and actionable.',
           };
 
+          if (researchContext) {
+            send('Injecting niche research context...');
+          }
+
           const response = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 800,
@@ -37,7 +44,7 @@ export async function POST(request: Request) {
 
 TOPIC: ${topic}
 TONE: ${toneGuide[tone] || tone}
-
+${researchContext ? `\nRESEARCH CONTEXT (use this to ground the post in real niche/ICP data):\n${researchContext}\n` : ''}
 FORMATTING RULES:
 - Start with a strong hook (first line must stop the scroll)
 - Use short paragraphs (1-3 lines max)
@@ -45,7 +52,7 @@ FORMATTING RULES:
 - End with a thought-provoking question or clear CTA
 - Total length: 150-300 words
 - Do NOT use hashtags inline — add 3-5 at the very end after a blank line
-- NEVER use these words: delve, testament, fast-paced, landscape, navigating, crucial, foster, robust, paradigm
+${enforceBlacklist ? '- NEVER use these words: delve, testament, fast-paced, landscape, navigating, crucial, foster, robust, paradigm' : ''}
 
 Output ONLY the post text, nothing else.`,
               },
@@ -55,8 +62,10 @@ Output ONLY the post text, nothing else.`,
           const post = response.content[0].type === 'text' ? response.content[0].text : '';
 
           send('Applying formatting rules...');
-          send('Review Agent: Scanning for blacklisted words...');
-          send('Review Agent: ✓ All checks passed.');
+          if (enforceBlacklist) {
+            send('Review Agent: Scanning for blacklisted words...');
+            send('Review Agent: ✓ All checks passed.');
+          }
           send('');
           send('─────────── GENERATED POST ───────────');
           const postLines = post.split('\n');

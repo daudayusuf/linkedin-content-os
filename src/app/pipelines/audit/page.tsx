@@ -6,6 +6,26 @@ import { motion } from 'framer-motion';
 
 interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
 
+async function getApiError(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`;
+
+  try {
+    const payload = await response.json();
+    if (typeof payload?.error === 'string' && payload.error.trim()) {
+      message = payload.error;
+    }
+  } catch {}
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) {
+      message = `${message} Retry in ${retryAfter}s.`;
+    }
+  }
+
+  return message;
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -42,6 +62,10 @@ export default function AuditPipeline() {
         body: JSON.stringify({ targetUrl, prospectEmail: prospectEmail || undefined })
       });
 
+      if (!response.ok) {
+        throw new Error(await getApiError(response));
+      }
+
       if (!response.body) throw new Error('No readable stream available');
 
       const reader = response.body.getReader();
@@ -74,7 +98,8 @@ export default function AuditPipeline() {
       }
     } catch (error) {
       const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
-      setLogs(prev => [...prev, { text: '❌ Failed to connect to backend server.', time: timeStr }]);
+      const message = error instanceof Error ? error.message : 'Failed to connect to backend server.';
+      setLogs(prev => [...prev, { text: `❌ ${message}`, time: timeStr }]);
       setIsRunning(false);
     }
   };

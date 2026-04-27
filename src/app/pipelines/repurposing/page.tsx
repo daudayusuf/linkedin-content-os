@@ -6,6 +6,26 @@ import { motion } from 'framer-motion';
 
 interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
 
+async function getApiError(response: Response): Promise<string> {
+  let message = `Request failed (${response.status})`;
+
+  try {
+    const payload = await response.json();
+    if (typeof payload?.error === 'string' && payload.error.trim()) {
+      message = payload.error;
+    }
+  } catch {}
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('retry-after');
+    if (retryAfter) {
+      message = `${message} Retry in ${retryAfter}s.`;
+    }
+  }
+
+  return message;
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -17,6 +37,8 @@ function timeAgo(iso: string): string {
 
 export default function RepurposingPipeline() {
   const [sourceUrl, setSourceUrl] = useState('');
+  const [generateTextPost, setGenerateTextPost] = useState(true);
+  const [generateCarousel, setGenerateCarousel] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [records, setRecords] = useState<NotionRecord[]>([]);
@@ -38,8 +60,12 @@ export default function RepurposingPipeline() {
       const response = await fetch('/api/pipelines/repurposing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceUrl }),
+        body: JSON.stringify({ sourceUrl, generateTextPost, generateCarousel }),
       });
+
+      if (!response.ok) {
+        throw new Error(await getApiError(response));
+      }
 
       if (!response.body) throw new Error('No readable stream');
 
@@ -60,8 +86,9 @@ export default function RepurposingPipeline() {
           } catch {}
         }
       }
-    } catch {
-      setLogs(prev => [...prev, '❌ Failed to connect to backend.']);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to connect to backend.';
+      setLogs(prev => [...prev, `❌ ${message}`]);
       setIsRunning(false);
     }
   };
@@ -105,19 +132,31 @@ export default function RepurposingPipeline() {
               </div>
 
               <div className="flex gap-4 flex-wrap">
-                <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700">
-                  <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-rose-500" defaultChecked />
+                <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded bg-slate-800 border-slate-700 text-rose-500 cursor-pointer"
+                    checked={generateTextPost}
+                    onChange={(e) => setGenerateTextPost(e.target.checked)}
+                    disabled={isRunning}
+                  />
                   <FileText className="w-4 h-4" /> Text Post
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700">
-                  <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-rose-500" defaultChecked />
+                <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded bg-slate-800 border-slate-700 text-rose-500 cursor-pointer"
+                    checked={generateCarousel}
+                    onChange={(e) => setGenerateCarousel(e.target.checked)}
+                    disabled={isRunning}
+                  />
                   <LayoutTemplate className="w-4 h-4" /> Carousel Copy
                 </label>
               </div>
 
               <button
                 type="submit"
-                disabled={isRunning || !sourceUrl}
+                disabled={isRunning || !sourceUrl || (!generateTextPost && !generateCarousel)}
                 className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-lg transition-all ${
                   isRunning 
                     ? 'bg-slate-800 cursor-not-allowed' 

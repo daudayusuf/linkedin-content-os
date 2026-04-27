@@ -8,10 +8,9 @@ import {
   CheckCircle2,
   Clock,
   Zap,
-  ShieldCheck,
   ExternalLink,
 } from 'lucide-react';
-import { getEngagementCounts, getRecentPosts, getRecentAudits, type NotionRecord } from '@/lib/notion';
+import { getEngagementCounts, getRecentPosts, type NotionRecord } from '@/lib/notion';
 
 const weeklyData = [
   { day: 'Mon', value: 42 },
@@ -25,8 +24,8 @@ const weeklyData = [
 
 const upcomingTasks = [
   { task: 'Run weekly content ideation session', pipeline: 'Pipeline 1', due: 'Monday', priority: 'high' },
-  { task: 'Review drafted posts in Notion and publish best one', pipeline: 'Pipeline 2', due: 'Tuesday', priority: 'medium' },
-  { task: 'Check engagement on last 3 LinkedIn posts', pipeline: 'Pipeline 3b', due: 'Wednesday', priority: 'medium' },
+  { task: 'Review and publish drafted posts in Notion', pipeline: 'Pipeline 2', due: 'Tuesday', priority: 'medium' },
+  { task: 'Check engagement on last 3 posts', pipeline: 'Pipeline 3b', due: 'Wednesday', priority: 'medium' },
   { task: 'Update ICP file with new audience insights', pipeline: 'Pipeline 2', due: 'Friday', priority: 'low' },
 ];
 
@@ -39,12 +38,13 @@ function formatShortDate(iso: string): string {
 function mapRecentPost(record: NotionRecord) {
   let title = record.title || 'Untitled post';
   if (title.length > 50) title = title.substring(0, 50) + '...';
+  const isPublished = /published/i.test(record.subtitle);
   
   return {
     id: record.id,
     title,
     format: record.subtitle || 'Format',
-    status: 'Draft',
+    status: isPublished ? 'Published' : 'Draft',
     date: formatShortDate(record.createdAt),
     notionUrl: record.notionUrl || '#',
   };
@@ -61,7 +61,7 @@ async function withFallback<T>(task: () => Promise<T>, fallback: T): Promise<T> 
 export default async function DashboardPage() {
   const recentPosts = await withFallback(() => getRecentPosts(5), [] as NotionRecord[]);
   const postsGenerated = await withFallback(async () => (await getRecentPosts(100)).length, 0);
-  const auditsRun = await withFallback(async () => (await getRecentAudits(100)).length, 0);
+  const engagementCounts = await withFallback(() => getEngagementCounts(), { plans: 0, notes: 0, comments: 0 });
 
   const tablePosts = recentPosts.map(mapRecentPost);
   const maxVal = Math.max(...weeklyData.map((d) => d.value));
@@ -79,20 +79,26 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
         <KpiCard label="Posts Generated" value={String(postsGenerated)} icon={<FileText className="w-5 h-5 text-blue-400" />} />
-        <KpiCard label="Audits Run" value={String(auditsRun)} icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />} />
+        <KpiCard label="Engagement Plans" value={String(engagementCounts.plans)} icon={<Activity className="w-5 h-5 text-emerald-400" />} />
         <KpiCard
           label="Impressions"
           value="--"
-          helperText="Requires LinkedIn API"
+          helperText="Connect LinkedIn Analytics to track"
           icon={<TrendingUp className="w-5 h-5 text-cyan-400" />}
         />
         <KpiCard
           label="Engagement Rate"
           value="--"
-          helperText="Requires LinkedIn API"
+          helperText="Connect LinkedIn Analytics to track"
           icon={<BarChart2 className="w-5 h-5 text-violet-400" />}
+        />
+        <KpiCard
+          label="New Followers"
+          value="--"
+          helperText="Connect LinkedIn Analytics to track"
+          icon={<Users className="w-5 h-5 text-amber-400" />}
         />
       </div>
 
@@ -118,7 +124,7 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-slate-500">Connect LinkedIn Analytics to populate with real impressions data</p>
+          <p className="mt-4 text-sm text-slate-500">Chart data requires LinkedIn Analytics integration</p>
         </div>
 
         {/* Upcoming tasks */}
