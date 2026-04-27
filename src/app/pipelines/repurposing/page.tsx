@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCcw, Play, Terminal, Youtube, FileText, LayoutTemplate } from 'lucide-react';
+import { RefreshCcw, Play, Terminal, Video, FileText, LayoutTemplate } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function RepurposingPipeline() {
@@ -52,7 +52,7 @@ export default function RepurposingPipeline() {
                   Source Content URL
                 </label>
                 <div className="relative">
-                  <Youtube className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
+                  <Video className="absolute left-4 top-3.5 w-5 h-5 text-slate-500" />
                   <input
                     type="url"
                     placeholder="YouTube URL, Blog Post URL, or Podcast link"

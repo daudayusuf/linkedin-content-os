@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 export default function EngagementPipeline() {
   const [targetAccount, setTargetAccount] = useState('');
   const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<{text: string, time: string}[]>([]);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,13 +45,15 @@ export default function EngagementPipeline() {
             }
             try {
               const parsed = JSON.parse(data);
-              setLogs(prev => [...prev, parsed.message]);
+              const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+              setLogs(prev => [...prev, { text: parsed.message, time: timeStr }]);
             } catch (err) {}
           }
         }
       }
     } catch (error) {
-      setLogs(prev => [...prev, '❌ Failed to connect to backend server.']);
+      const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+      setLogs(prev => [...prev, { text: '❌ Failed to connect to backend server.', time: timeStr }]);
       setIsRunning(false);
     }
   };
@@ -155,11 +157,11 @@ export default function EngagementPipeline() {
               <p className="text-slate-600">Waiting for pipeline trigger...</p>
             ) : (
               logs.map((log, i) => (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={i} className={`flex gap-3 ${log.includes('✅') ? 'text-emerald-400' : 'text-slate-300'}`}>
+                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={i} className={`flex gap-3 ${log.text.includes('✅') ? 'text-emerald-400' : 'text-slate-300'}`}>
                   <span className="text-slate-600 shrink-0">
-                    {new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}
+                    {log.time}
                   </span>
-                  <span>{log}</span>
+                  <span>{log.text}</span>
                 </motion.div>
               ))
             )}
