@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { tasks } from '@trigger.dev/sdk/v3';
 import { saveAuditReport } from '@/lib/notion';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -10,7 +11,7 @@ function extractUsername(url: string): string {
 
 export async function POST(request: Request) {
   try {
-    const { targetUrl } = await request.json();
+    const { targetUrl, prospectEmail, prospectName } = await request.json();
     if (!targetUrl) {
       return new Response(JSON.stringify({ error: 'Target URL is required' }), { status: 400 });
     }
@@ -209,6 +210,21 @@ Keep each post idea as a specific, actionable hook (under 15 words). Format clea
           } catch (notionErr: any) {
             send(`✅ Audit complete for ${profileData?.fullName || username}`);
             console.error('[audit] Notion save failed:', notionErr.message);
+          }
+
+          if (prospectEmail) {
+            send('Dispatching email delivery via background job...');
+            try {
+              await tasks.trigger('linkedin-audit-bot', {
+                url: targetUrl,
+                prospectEmail,
+                prospectName: profileData?.fullName || username,
+              });
+              send(`✅ Audit report will be emailed to ${prospectEmail}`);
+            } catch (triggerErr: any) {
+              send('⚠ Email dispatch failed — report saved to Notion only.');
+              console.error('[audit] Trigger.dev dispatch failed:', triggerErr.message);
+            }
           }
 
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));

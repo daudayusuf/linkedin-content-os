@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Play, Terminal, FileText, CheckCircle2, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Play, Terminal, FileText, ExternalLink, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
@@ -17,6 +17,7 @@ function timeAgo(iso: string): string {
 
 export default function AuditPipeline() {
   const [targetUrl, setTargetUrl] = useState('');
+  const [prospectEmail, setProspectEmail] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<{text: string, time: string}[]>([]);
   const [records, setRecords] = useState<NotionRecord[]>([]);
@@ -32,33 +33,34 @@ export default function AuditPipeline() {
     if (!targetUrl) return;
 
     setIsRunning(true);
-    setLogs([]); // clear old logs
+    setLogs([]);
 
     try {
       const response = await fetch('/api/pipelines/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUrl })
+        body: JSON.stringify({ targetUrl, prospectEmail: prospectEmail || undefined })
       });
 
       if (!response.body) throw new Error('No readable stream available');
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n\n');
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') {
               setIsRunning(false);
               setTargetUrl('');
+              setProspectEmail('');
               fetchRecords();
               break;
             }
@@ -96,7 +98,7 @@ export default function AuditPipeline() {
         <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <h2 className="text-xl font-bold text-white mb-4">Pipeline Configuration</h2>
-            
+
             <form onSubmit={handleRun} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-2">
@@ -113,14 +115,31 @@ export default function AuditPipeline() {
                 />
               </div>
 
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-purple-500" defaultChecked />
-                  Sync to Notion
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">
+                  Send Report to (optional)
                 </label>
-                <label className="flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-purple-500" defaultChecked />
-                  Generate PDF
+                <div className="relative">
+                  <Mail className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+                  <input
+                    type="email"
+                    placeholder="prospect@email.com"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-11 pr-4 py-3 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    value={prospectEmail}
+                    onChange={(e) => setProspectEmail(e.target.value)}
+                    disabled={isRunning}
+                  />
+                </div>
+                {prospectEmail && (
+                  <p className="text-xs text-purple-400 mt-1.5">Report will be emailed when pipeline completes</p>
+                )}
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm text-slate-400 cursor-not-allowed">
+                  <input type="checkbox" checked disabled onChange={() => {}} className="rounded bg-slate-800 border-slate-700 text-purple-500 cursor-not-allowed opacity-60" />
+                  Sync to Notion
+                  <span className="text-xs text-slate-500">(Always on)</span>
                 </label>
               </div>
 
@@ -128,9 +147,9 @@ export default function AuditPipeline() {
                 type="submit"
                 disabled={isRunning || !targetUrl}
                 className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-lg transition-all ${
-                  isRunning 
-                    ? 'bg-slate-800 cursor-not-allowed' 
-                    : targetUrl 
+                  isRunning
+                    ? 'bg-slate-800 cursor-not-allowed'
+                    : targetUrl
                       ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-lg shadow-purple-500/25'
                       : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 }`}
@@ -180,15 +199,15 @@ export default function AuditPipeline() {
               <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
             </div>
           </div>
-          
+
           <div className="flex-1 p-6 font-mono text-sm overflow-y-auto space-y-2">
             {!isRunning && logs.length === 0 ? (
               <p className="text-slate-600">Waiting for pipeline trigger...</p>
             ) : (
               logs.map((log, i) => (
-                <motion.div 
-                  initial={{ opacity: 0, x: -10 }} 
-                  animate={{ opacity: 1, x: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
                   key={i}
                   className={`flex gap-3 ${log.text.includes('✅') ? 'text-emerald-400' : 'text-slate-300'}`}
                 >

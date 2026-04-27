@@ -6,7 +6,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { getRecentActivity } from "@/lib/notion";
+import { getRecentActivity, getRecentPosts } from "@/lib/notion";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -20,21 +20,47 @@ function timeAgo(iso: string): string {
 
 export default async function Home() {
   let activity: any[] = [];
+  let postsCount = 0;
+
   try {
-    activity = await getRecentActivity(5);
+    activity = await getRecentActivity(50);
   } catch {}
+
+  try {
+    const posts = await getRecentPosts(100);
+    postsCount = posts.length;
+  } catch {}
+
+  const today = new Date().toISOString().slice(0, 10);
+  const todayRuns = activity.filter((a: any) => (a.createdAt || '').startsWith(today)).length;
+
+  const pipelineLastRun: Record<string, string> = {};
+  for (const entry of activity) {
+    const p = (entry as any).pipeline as string;
+    if (p && !pipelineLastRun[p]) {
+      pipelineLastRun[p] = entry.createdAt;
+    }
+  }
+
+  function lastRun(pipeline: string): string {
+    return pipelineLastRun[pipeline] ? timeAgo(pipelineLastRun[pipeline]) : 'Never';
+  }
+
+  const subtitle = todayRuns > 0
+    ? `${todayRuns} pipeline run${todayRuns === 1 ? '' : 's'} today. Your content OS is active.`
+    : 'No runs today yet. Pick a pipeline to start.';
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      
+
       {/* Header section */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
-            Welcome back, Admin.
+            Welcome back, Daud.
           </h1>
           <p className="text-slate-400 text-lg">
-            Your LinkedIn Content OS is running smoothly. 3 pipelines are active.
+            {subtitle}
           </p>
         </div>
         <div className="flex gap-4">
@@ -50,31 +76,31 @@ export default async function Home() {
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MetricCard 
-          title="Total Impressions" 
-          value="124.5K" 
-          trend="+12.5%" 
+        <MetricCard
+          title="Total Impressions"
+          value="--"
+          trend="LinkedIn API needed"
           isPositive={true}
           icon={<TrendingUp className="text-emerald-400 w-5 h-5" />}
         />
-        <MetricCard 
-          title="Posts Generated" 
-          value="48" 
-          trend="+4" 
+        <MetricCard
+          title="Posts Generated"
+          value={String(postsCount)}
+          trend="All time total"
           isPositive={true}
           icon={<FileText className="text-blue-400 w-5 h-5" />}
         />
-        <MetricCard 
-          title="Engagement Rate" 
-          value="4.2%" 
-          trend="-0.5%" 
-          isPositive={false}
+        <MetricCard
+          title="Engagement Rate"
+          value="--"
+          trend="LinkedIn API needed"
+          isPositive={true}
           icon={<Activity className="text-purple-400 w-5 h-5" />}
         />
-        <MetricCard 
-          title="Active Agents" 
-          value="5" 
-          trend="All systems nominal" 
+        <MetricCard
+          title="Active Agents"
+          value="4"
+          trend="All systems nominal"
           isPositive={true}
           icon={<Bot className="text-cyan-400 w-5 h-5" />}
         />
@@ -82,26 +108,26 @@ export default async function Home() {
 
       {/* Main content split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Active Pipelines */}
         <div className="col-span-2 space-y-6">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-400" /> Active Pipelines
           </h2>
           <div className="space-y-4">
-            <PipelineCard 
-              name="Pipeline 5: LinkedIn Post & Profile Audit" 
-              status="Ready" 
-              lastRun="2 hours ago"
+            <PipelineCard
+              name="Pipeline 5: LinkedIn Post & Profile Audit"
+              status="Ready"
+              lastRun={lastRun('Audit')}
               href="/pipelines/audit"
               description="Analyze a LinkedIn profile, score recent content, and generate a 30-day strategy report."
               color="from-purple-500/20 to-blue-500/20"
               border="border-purple-500/30"
             />
-            <PipelineCard 
-              name="Pipeline 3: Engagement Session Plans" 
-              status="Running" 
-              lastRun="Now"
+            <PipelineCard
+              name="Pipeline 3: Engagement Session Plans"
+              status="Running"
+              lastRun={lastRun('Engagement')}
               href="/pipelines/engagement"
               description="Scraping target accounts and drafting personalized connection requests & comments."
               color="from-emerald-500/20 to-teal-500/20"
@@ -110,7 +136,7 @@ export default async function Home() {
              <PipelineCard
               name="Pipeline 1: Content Ideation"
               status="Idle"
-              lastRun="1 day ago"
+              lastRun={lastRun('Ideation')}
               href="/pipelines/ideation"
               description="Scraping industry news and Perplexity for highly-engaging post concepts."
               color="from-slate-800 to-slate-800"
@@ -119,7 +145,7 @@ export default async function Home() {
             <PipelineCard
               name="Pipeline 2: Post Generation"
               status="Idle"
-              lastRun="3 hours ago"
+              lastRun={lastRun('Generation')}
               href="/pipelines/generation"
               description="Transform rough ideas into high-converting, perfectly formatted LinkedIn posts using Claude."
               color="from-blue-500/20 to-cyan-500/20"
@@ -128,7 +154,7 @@ export default async function Home() {
             <PipelineCard
               name="Pipeline 4: Content Repurposing"
               status="Idle"
-              lastRun="2 days ago"
+              lastRun={lastRun('Repurposing')}
               href="/pipelines/repurposing"
               description="Turn long-form videos, podcasts, and articles into viral LinkedIn posts and carousels."
               color="from-rose-500/20 to-pink-500/20"
@@ -146,13 +172,13 @@ export default async function Home() {
             <div className="space-y-5">
               {activity.length === 0 ? (
                 <p className="text-slate-500 text-sm">No activity yet. Run a pipeline to see logs here.</p>
-              ) : activity.map((item: any) => (
+              ) : activity.slice(0, 5).map((item: any) => (
                 <ActivityItem
                   key={item.id}
                   time={timeAgo(item.createdAt)}
                   title={item.title}
                   desc={item.subtitle}
-                  type={(item as any).type ?? 'info'}
+                  type={item.type ?? 'info'}
                 />
               ))}
             </div>
@@ -220,8 +246,8 @@ function PipelineCard({ name, status, lastRun, href, description, color, border 
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">{name}</h3>
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                status === 'Running' ? 'bg-blue-500/20 text-blue-300 animate-pulse' : 
-                status === 'Ready' ? 'bg-emerald-500/20 text-emerald-300' : 
+                status === 'Running' ? 'bg-blue-500/20 text-blue-300 animate-pulse' :
+                status === 'Ready' ? 'bg-emerald-500/20 text-emerald-300' :
                 'bg-slate-500/20 text-slate-300'
               }`}>
                 {status}

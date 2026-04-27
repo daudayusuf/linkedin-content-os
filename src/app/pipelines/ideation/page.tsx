@@ -106,9 +106,10 @@ export default function IdeationPipeline() {
               </div>
 
               <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" className="rounded bg-slate-800 border-slate-700 text-amber-500" defaultChecked />
+                <label className="flex items-center gap-2 text-sm text-slate-400 cursor-not-allowed">
+                  <input type="checkbox" checked disabled onChange={() => {}} className="rounded bg-slate-800 border-slate-700 text-amber-500 cursor-not-allowed opacity-60" />
                   Sync to Notion Kanban
+                  <span className="text-xs text-slate-500">(Always on)</span>
                 </label>
               </div>
 
