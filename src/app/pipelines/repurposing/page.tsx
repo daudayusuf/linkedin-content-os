@@ -1,30 +1,69 @@
 'use client';
 
-import { useState } from 'react';
-import { RefreshCcw, Play, Terminal, Video, FileText, LayoutTemplate } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { RefreshCcw, Play, Terminal, Video, FileText, LayoutTemplate, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function RepurposingPipeline() {
   const [sourceUrl, setSourceUrl] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [records, setRecords] = useState<NotionRecord[]>([]);
 
-  const handleRun = (e: React.FormEvent) => {
+  const fetchRecords = () =>
+    fetch('/api/notion/records?type=repurposing&limit=5')
+      .then(r => r.json()).then(setRecords).catch(() => {});
+
+  useEffect(() => { fetchRecords(); }, []);
+
+  const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sourceUrl) return;
 
     setIsRunning(true);
-    setLogs(['Initializing Pipeline 4: Content Repurposing...', `Source URL: ${sourceUrl}`]);
+    setLogs([]);
 
-    setTimeout(() => setLogs(prev => [...prev, 'Downloading transcript / text content...']), 1500);
-    setTimeout(() => setLogs(prev => [...prev, 'Extracting key takeaways and quotes...']), 3500);
-    setTimeout(() => setLogs(prev => [...prev, 'Generating LinkedIn text post format...']), 5000);
-    setTimeout(() => setLogs(prev => [...prev, 'Generating Carousel slide text content...']), 6500);
-    setTimeout(() => {
-      setLogs(prev => [...prev, '✅ Content successfully repurposed into 3 formats.']);
+    try {
+      const response = await fetch('/api/pipelines/repurposing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceUrl }),
+      });
+
+      if (!response.body) throw new Error('No readable stream');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') { setIsRunning(false); setSourceUrl(''); fetchRecords(); break; }
+          try {
+            const { message } = JSON.parse(data);
+            setLogs(prev => [...prev, message]);
+          } catch {}
+        }
+      }
+    } catch {
+      setLogs(prev => [...prev, '❌ Failed to connect to backend.']);
       setIsRunning(false);
-      setSourceUrl('');
-    }, 8500);
+    }
   };
 
   return (
@@ -95,6 +134,26 @@ export default function RepurposingPipeline() {
                 {isRunning ? 'Extracting Content...' : 'Start Repurposing'}
               </button>
             </form>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-white mb-4">Recent Repurposed Content</h2>
+            <div className="space-y-3">
+              {records.length === 0 ? (
+                <p className="text-slate-500 text-sm">No content repurposed yet. Paste a URL above to get started.</p>
+              ) : records.map(r => (
+                <a key={r.id} href={r.notionUrl} target="_blank" rel="noopener noreferrer"
+                   className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <LayoutTemplate className="w-5 h-5 text-rose-400 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-white group-hover:text-rose-300 transition-colors line-clamp-1">{r.title}</p>
+                      <p className="text-xs text-slate-400">{r.subtitle} · {timeAgo(r.createdAt)}</p>
+                    </div>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
+                </a>
+              ))}
+            </div>
           </div>
         </div>
 

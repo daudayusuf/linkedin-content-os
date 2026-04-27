@@ -1,13 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { Activity, Play, Terminal, Users, UserPlus, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, Play, Terminal, UserPlus, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function EngagementPipeline() {
   const [targetAccount, setTargetAccount] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<{text: string, time: string}[]>([]);
+  const [counts, setCounts] = useState({ notes: 0, comments: 0 });
+
+  const fetchCounts = () =>
+    fetch('/api/notion/records?type=engagement-counts')
+      .then(r => r.json())
+      .then((d) => setCounts({ notes: d.notes ?? 0, comments: d.comments ?? 0 }))
+      .catch(() => {});
+
+  useEffect(() => { fetchCounts(); }, []);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +50,7 @@ export default function EngagementPipeline() {
             if (data === '[DONE]') {
               setIsRunning(false);
               setTargetAccount('');
+              fetchCounts();
               break;
             }
             try {
@@ -128,12 +138,12 @@ export default function EngagementPipeline() {
           <div className="grid grid-cols-2 gap-4">
              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center justify-center text-center">
                <UserPlus className="w-8 h-8 text-emerald-400 mb-2" />
-               <span className="text-2xl font-bold text-white">45</span>
+               <span className="text-2xl font-bold text-white">{counts.notes}</span>
                <span className="text-xs text-slate-400">Connection Notes Drafted</span>
              </div>
              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col items-center justify-center text-center">
                <MessageCircle className="w-8 h-8 text-emerald-400 mb-2" />
-               <span className="text-2xl font-bold text-white">112</span>
+               <span className="text-2xl font-bold text-white">{counts.comments}</span>
                <span className="text-xs text-slate-400">Comments Drafted</span>
              </div>
           </div>

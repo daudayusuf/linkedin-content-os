@@ -1,14 +1,29 @@
-import { 
-  Activity, 
-  ArrowRight, 
-  Bot, 
-  FileText, 
-  TrendingUp, 
-  Users 
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  FileText,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import { getRecentActivity } from "@/lib/notion";
 
-export default function Home() {
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? 'Yesterday' : `${d}d ago`;
+}
+
+export default async function Home() {
+  let activity: any[] = [];
+  try {
+    activity = await getRecentActivity(5);
+  } catch {}
+
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       
@@ -92,14 +107,32 @@ export default function Home() {
               color="from-emerald-500/20 to-teal-500/20"
               border="border-emerald-500/30"
             />
-             <PipelineCard 
-              name="Pipeline 1: Content Ideation" 
-              status="Idle" 
+             <PipelineCard
+              name="Pipeline 1: Content Ideation"
+              status="Idle"
               lastRun="1 day ago"
               href="/pipelines/ideation"
               description="Scraping industry news and Perplexity for highly-engaging post concepts."
               color="from-slate-800 to-slate-800"
               border="border-slate-700"
+            />
+            <PipelineCard
+              name="Pipeline 2: Post Generation"
+              status="Idle"
+              lastRun="3 hours ago"
+              href="/pipelines/generation"
+              description="Transform rough ideas into high-converting, perfectly formatted LinkedIn posts using Claude."
+              color="from-blue-500/20 to-cyan-500/20"
+              border="border-blue-500/30"
+            />
+            <PipelineCard
+              name="Pipeline 4: Content Repurposing"
+              status="Idle"
+              lastRun="2 days ago"
+              href="/pipelines/repurposing"
+              description="Turn long-form videos, podcasts, and articles into viral LinkedIn posts and carousels."
+              color="from-rose-500/20 to-pink-500/20"
+              border="border-rose-500/30"
             />
           </div>
         </div>
@@ -111,32 +144,19 @@ export default function Home() {
           </h2>
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl">
             <div className="space-y-5">
-              <ActivityItem 
-                time="10:42 AM" 
-                title="Audit Agent completed run" 
-                desc="Generated PDF report for Dr. Staci Moore"
-                type="success"
-              />
-              <ActivityItem 
-                time="09:15 AM" 
-                title="Perplexity Integration" 
-                desc="Fetched 15 new trend topics for niche: Digital Marketing"
-                type="info"
-              />
-              <ActivityItem 
-                time="08:00 AM" 
-                title="Cron Task Executed" 
-                desc="Trigger.dev started Pipeline 3"
-                type="info"
-              />
-              <ActivityItem 
-                time="Yesterday" 
-                title="Review Agent flagged post" 
-                desc="Removed word 'delve' from drafted post"
-                type="warning"
-              />
+              {activity.length === 0 ? (
+                <p className="text-slate-500 text-sm">No activity yet. Run a pipeline to see logs here.</p>
+              ) : activity.map((item: any) => (
+                <ActivityItem
+                  key={item.id}
+                  time={timeAgo(item.createdAt)}
+                  title={item.title}
+                  desc={item.subtitle}
+                  type={(item as any).type ?? 'info'}
+                />
+              ))}
             </div>
-            
+
             <button className="w-full mt-6 py-2.5 text-sm font-medium text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors">
               View All Logs
             </button>

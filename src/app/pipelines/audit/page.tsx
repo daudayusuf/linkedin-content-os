@@ -1,13 +1,31 @@
 'use client';
 
-import { useState } from 'react';
-import { ShieldCheck, Play, Terminal, FileText, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ShieldCheck, Play, Terminal, FileText, CheckCircle2, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function AuditPipeline() {
   const [targetUrl, setTargetUrl] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<{text: string, time: string}[]>([]);
+  const [records, setRecords] = useState<NotionRecord[]>([]);
+
+  const fetchRecords = () =>
+    fetch('/api/notion/records?type=audit&limit=5')
+      .then(r => r.json()).then(setRecords).catch(() => {});
+
+  useEffect(() => { fetchRecords(); }, []);
 
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +59,7 @@ export default function AuditPipeline() {
             if (data === '[DONE]') {
               setIsRunning(false);
               setTargetUrl('');
+              fetchRecords();
               break;
             }
             try {
@@ -129,26 +148,21 @@ export default function AuditPipeline() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
              <h2 className="text-xl font-bold text-white mb-4">Recent Reports</h2>
              <div className="space-y-3">
-               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer group">
-                 <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-rose-400" />
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">Dr. Staci Moore</p>
-                      <p className="text-xs text-slate-400">PDF Report • 2 hrs ago</p>
-                    </div>
-                 </div>
-                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-               </div>
-               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer group">
-                 <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-rose-400" />
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">John Doe</p>
-                      <p className="text-xs text-slate-400">PDF Report • 1 day ago</p>
-                    </div>
-                 </div>
-                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-               </div>
+               {records.length === 0 ? (
+                 <p className="text-slate-500 text-sm">No audits saved yet. Run your first audit above.</p>
+               ) : records.map(r => (
+                 <a key={r.id} href={r.notionUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors group">
+                   <div className="flex items-center gap-3">
+                     <FileText className="w-5 h-5 text-purple-400 shrink-0" />
+                     <div>
+                       <p className="text-sm font-medium text-white group-hover:text-purple-300 transition-colors">{r.title}</p>
+                       <p className="text-xs text-slate-400">{r.subtitle} · {timeAgo(r.createdAt)}</p>
+                     </div>
+                   </div>
+                   <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
+                 </a>
+               ))}
              </div>
           </div>
         </div>

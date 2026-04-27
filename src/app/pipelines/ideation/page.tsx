@@ -1,29 +1,70 @@
 'use client';
 
-import { useState } from 'react';
-import { PenTool, Play, Terminal, Lightbulb, Search, BookOpen } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PenTool, Play, Terminal, Lightbulb, Search, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function IdeationPipeline() {
   const [niche, setNiche] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [records, setRecords] = useState<NotionRecord[]>([]);
 
-  const handleRun = (e: React.FormEvent) => {
+  const fetchRecords = () =>
+    fetch('/api/notion/records?type=ideation&limit=5')
+      .then(r => r.json()).then(setRecords).catch(() => {});
+
+  useEffect(() => { fetchRecords(); }, []);
+
+  const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!niche) return;
 
     setIsRunning(true);
-    setLogs(['Initializing Pipeline 1: Content Ideation...', `Target Niche: ${niche}`]);
+    setLogs([]);
 
-    setTimeout(() => setLogs(prev => [...prev, 'Connecting to Perplexity API for trends...']), 1500);
-    setTimeout(() => setLogs(prev => [...prev, 'Analyzing recent highly-engaged posts in niche...']), 3000);
-    setTimeout(() => setLogs(prev => [...prev, 'Generating 10 viral hook ideas...']), 4500);
-    setTimeout(() => {
-      setLogs(prev => [...prev, '✅ Ideation complete. Results synced to Notion.']);
+    try {
+      const response = await fetch('/api/pipelines/ideation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ niche }),
+      });
+
+      if (!response.body) throw new Error('No readable stream');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') { setIsRunning(false); setNiche(''); fetchRecords(); break; }
+          try {
+            const { message } = JSON.parse(data);
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            setLogs(prev => [...prev, `[${time}] ${message}`]);
+          } catch {}
+        }
+      }
+    } catch {
+      setLogs(prev => [...prev, '❌ Failed to connect to backend.']);
       setIsRunning(false);
-      setNiche('');
-    }, 6500);
+    }
   };
 
   return (
@@ -95,24 +136,21 @@ export default function IdeationPipeline() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
              <h2 className="text-xl font-bold text-white mb-4">Recent Ideas Generated</h2>
              <div className="space-y-3">
-               <div className="flex items-start justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer group">
-                 <div className="flex items-start gap-3">
-                    <Lightbulb className="w-5 h-5 text-amber-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-amber-300 transition-colors">Why 90% of B2B SaaS cold emails fail (and the 1 framework to fix it)</p>
-                      <p className="text-xs text-slate-400 mt-1">Hook Idea • 5 hrs ago</p>
-                    </div>
-                 </div>
-               </div>
-               <div className="flex items-start justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer group">
-                 <div className="flex items-start gap-3">
-                    <BookOpen className="w-5 h-5 text-amber-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-amber-300 transition-colors">The death of the 'spray and pray' SDR approach.</p>
-                      <p className="text-xs text-slate-400 mt-1">Story Concept • 1 day ago</p>
-                    </div>
-                 </div>
-               </div>
+               {records.length === 0 ? (
+                 <p className="text-slate-500 text-sm">No ideation sessions yet. Run your first above.</p>
+               ) : records.map(r => (
+                 <a key={r.id} href={r.notionUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors group">
+                   <div className="flex items-start gap-3">
+                     <Lightbulb className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+                     <div>
+                       <p className="text-sm font-medium text-white group-hover:text-amber-300 transition-colors">{r.title}</p>
+                       <p className="text-xs text-slate-400 mt-0.5">{r.subtitle} · {timeAgo(r.createdAt)}</p>
+                     </div>
+                   </div>
+                   <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0 ml-2" />
+                 </a>
+               ))}
              </div>
           </div>
         </div>

@@ -1,31 +1,70 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageSquare, Play, Terminal, FileText, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageSquare, Play, Terminal, FileText, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+
+interface NotionRecord { id: string; title: string; subtitle: string; notionUrl: string; createdAt: string; }
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
 
 export default function GenerationPipeline() {
   const [topic, setTopic] = useState('');
   const [tone, setTone] = useState('Professional & Authoritative');
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
+  const [records, setRecords] = useState<NotionRecord[]>([]);
 
-  const handleRun = (e: React.FormEvent) => {
+  const fetchRecords = () =>
+    fetch('/api/notion/records?type=generation&limit=5')
+      .then(r => r.json()).then(setRecords).catch(() => {});
+
+  useEffect(() => { fetchRecords(); }, []);
+
+  const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!topic) return;
 
     setIsRunning(true);
-    setLogs(['Initializing Pipeline 2: Post Generation...', `Topic: ${topic}`, `Tone: ${tone}`]);
+    setLogs([]);
 
-    setTimeout(() => setLogs(prev => [...prev, 'Drafting initial content with Gemini 1.5 Pro...']), 1500);
-    setTimeout(() => setLogs(prev => [...prev, 'Applying formatting rules (line breaks, bullet points)...']), 3500);
-    setTimeout(() => setLogs(prev => [...prev, 'Review Agent: Checking against blacklisted words...']), 5000);
-    setTimeout(() => setLogs(prev => [...prev, 'Review Agent: Flagged "delve", rewriting sentence...']), 6000);
-    setTimeout(() => {
-      setLogs(prev => [...prev, '✅ Final Post Drafted. Saved to Notion Drafts.']);
+    try {
+      const response = await fetch('/api/pipelines/generation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, tone }),
+      });
+
+      if (!response.body) throw new Error('No readable stream');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6);
+          if (data === '[DONE]') { setIsRunning(false); setTopic(''); fetchRecords(); break; }
+          try {
+            const { message } = JSON.parse(data);
+            setLogs(prev => [...prev, message]);
+          } catch {}
+        }
+      }
+    } catch {
+      setLogs(prev => [...prev, '❌ Failed to connect to backend.']);
       setIsRunning(false);
-      setTopic('');
-    }, 8500);
+    }
   };
 
   return (
@@ -110,16 +149,21 @@ export default function GenerationPipeline() {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
              <h2 className="text-xl font-bold text-white mb-4">Recent Drafts</h2>
              <div className="space-y-3">
-               <div className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer group">
-                 <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-blue-400" />
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-cyan-300 transition-colors">Onboarding Process Framework</p>
-                      <p className="text-xs text-slate-400">Actionable • Sent to Notion</p>
-                    </div>
-                 </div>
-                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-               </div>
+               {records.length === 0 ? (
+                 <p className="text-slate-500 text-sm">No drafts yet. Generate your first post above.</p>
+               ) : records.map(r => (
+                 <a key={r.id} href={r.notionUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors group">
+                   <div className="flex items-center gap-3">
+                     <FileText className="w-5 h-5 text-blue-400 shrink-0" />
+                     <div>
+                       <p className="text-sm font-medium text-white group-hover:text-cyan-300 transition-colors line-clamp-1">{r.title}</p>
+                       <p className="text-xs text-slate-400">{r.subtitle} · {timeAgo(r.createdAt)}</p>
+                     </div>
+                   </div>
+                   <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-slate-300 shrink-0" />
+                 </a>
+               ))}
              </div>
           </div>
         </div>
