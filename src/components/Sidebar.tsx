@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,9 +15,11 @@ import {
   BarChart2,
   Bot,
   User,
-  Settings
+  Settings,
+  Menu,
+  X,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
@@ -33,13 +36,11 @@ const navigation = [
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
-
+function NavContent({ pathname, onLinkClick }: { pathname: string; onLinkClick?: () => void }) {
   return (
-    <div className="flex flex-col w-64 bg-slate-950 border-r border-slate-800 h-screen sticky top-0 overflow-y-auto hidden md:flex">
+    <>
       <div className="p-6">
-        <Link href="/" className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2" onClick={onLinkClick}>
           <div className="w-8 h-8 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
             <Bot className="w-5 h-5 text-white" />
           </div>
@@ -52,14 +53,15 @@ export function Sidebar() {
       <nav className="flex-1 px-4 space-y-1 mt-4">
         {navigation.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          
+
           return (
             <Link
               key={item.name}
               href={item.href}
+              onClick={onLinkClick}
               className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all relative ${
-                isActive 
-                  ? 'text-white' 
+                isActive
+                  ? 'text-white'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
               }`}
             >
@@ -94,6 +96,80 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
+
+  return (
+    <>
+      {/* ── Mobile top bar ── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800 flex items-center justify-between px-4 py-3">
+        <Link href="/" className="flex items-center space-x-2">
+          <div className="w-7 h-7 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <Bot className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+            Content OS
+          </span>
+        </Link>
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </div>
+
+      {/* ── Mobile slide-out drawer ── */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-slate-950 border-r border-slate-800 flex flex-col overflow-y-auto"
+            >
+              <NavContent pathname={pathname} onLinkClick={() => setMobileOpen(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Desktop sidebar ── */}
+      <div className="hidden md:flex flex-col w-64 bg-slate-950 border-r border-slate-800 h-screen sticky top-0 overflow-y-auto">
+        <NavContent pathname={pathname} />
+      </div>
+    </>
   );
 }

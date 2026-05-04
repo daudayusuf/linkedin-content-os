@@ -31,11 +31,11 @@ export default function PerformancePipeline() {
   }, [resetRun]);
 
   return (
-    <div className="p-8 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-8 border-b border-slate-800 pb-6">
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-          <div className="p-2 bg-cyan-500/20 rounded-lg">
-            <BarChart2 className="w-8 h-8 text-cyan-400" />
+    <div className="p-4 md:p-8 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="mb-6 md:mb-8 border-b border-slate-800 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
+          <div className="p-2 bg-cyan-500/20 rounded-lg shrink-0">
+            <BarChart2 className="w-6 h-6 md:w-8 md:h-8 text-cyan-400" />
           </div>
           Pipeline 5b: Performance Analysis
         </h1>

@@ -29,11 +29,11 @@ export default function StrategyPipeline() {
   }, [resetRun]);
 
   return (
-    <div className="p-8 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="mb-8 border-b border-slate-800 pb-6">
-        <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-          <div className="p-2 bg-green-500/20 rounded-lg">
-            <Map className="w-8 h-8 text-green-400" />
+    <div className="p-4 md:p-8 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="mb-6 md:mb-8 border-b border-slate-800 pb-4 md:pb-6">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white flex items-center gap-3">
+          <div className="p-2 bg-green-500/20 rounded-lg shrink-0">
+            <Map className="w-6 h-6 md:w-8 md:h-8 text-green-400" />
           </div>
           Pipeline 2: Content Strategy Planning and Building
         </h1>

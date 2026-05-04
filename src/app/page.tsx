@@ -51,15 +51,15 @@ export default async function Home() {
     : 'No runs today yet. Pick a pipeline to start.';
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
 
       {/* Header section */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
+          <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
             Welcome back, Daud.
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-slate-400 text-base md:text-lg">
             {subtitle}
           </p>
         </div>
@@ -214,11 +214,11 @@ function MetricCard({ title, value, trend, isPositive, icon }: any) {
 function PipelineCard({ name, status, lastRun, href, description, color, border }: any) {
   return (
     <Link href={href} className="block group">
-      <div className={`bg-gradient-to-r ${color} border ${border} rounded-2xl p-6 transition-all hover:shadow-2xl hover:-translate-y-1`}>
-        <div className="flex justify-between items-start">
+      <div className={`bg-gradient-to-r ${color} border ${border} rounded-2xl p-4 md:p-6 transition-all hover:shadow-2xl hover:-translate-y-1`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-bold text-white group-hover:text-blue-200 transition-colors">{name}</h3>
+              <h3 className="text-base md:text-lg font-bold text-white group-hover:text-blue-200 transition-colors">{name}</h3>
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                 status === 'Running' ? 'bg-blue-500/20 text-blue-300 animate-pulse' :
                 status === 'Ready' ? 'bg-emerald-500/20 text-emerald-300' :

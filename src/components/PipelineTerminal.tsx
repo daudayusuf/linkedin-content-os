@@ -58,7 +58,7 @@ export function PipelineTerminal({
   const cursorClass = CURSOR_COLOR[accentColor] || 'text-blue-400';
 
   return (
-    <div className="bg-[#0c0c0c] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[600px]">
+    <div className="bg-[#0c0c0c] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[400px] md:h-[600px]">
       {/* Header bar */}
       <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 shrink-0">
