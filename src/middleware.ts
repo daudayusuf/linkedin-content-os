@@ -19,10 +19,10 @@ const DEFAULT_LIMIT: LimitConfig = {
 
 const LIMITS: Array<{ prefix: string; config: LimitConfig }> = [
   { prefix: '/api/pipelines/audit', config: { windowMs: 60_000, max: 6 } },
-  { prefix: '/api/pipelines/generation', config: { windowMs: 60_000, max: 10 } },
-  { prefix: '/api/pipelines/ideation', config: { windowMs: 60_000, max: 10 } },
   { prefix: '/api/pipelines/engagement', config: { windowMs: 60_000, max: 8 } },
-  { prefix: '/api/pipelines/repurposing', config: { windowMs: 60_000, max: 8 } },
+  { prefix: '/api/pipelines/research', config: { windowMs: 60_000, max: 3 } },
+  { prefix: '/api/pipelines/strategy', config: { windowMs: 60_000, max: 3 } },
+  { prefix: '/api/pipelines/calendar', config: { windowMs: 60_000, max: 2 } },
   { prefix: '/api/notion/records', config: { windowMs: 60_000, max: 60 } },
 ];
 

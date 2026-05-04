@@ -1,19 +1,17 @@
 import {
   getRecentAudits,
   getRecentPosts,
-  getRecentHooks,
   getRecentEngagementPlans,
-  getRecentRepurposed,
   getRecentActivity,
   getEngagementCounts,
+  getRecentResearchOutputs,
 } from '@/lib/notion';
 
 const FETCH_MAP: Record<string, (limit: number) => Promise<any>> = {
   audit:      (l) => getRecentAudits(l),
   generation: (l) => getRecentPosts(l),
-  ideation:   (l) => getRecentHooks(l),
+  research:   (l) => getRecentResearchOutputs(l),
   engagement: (l) => getRecentEngagementPlans(l),
-  repurposing:(l) => getRecentRepurposed(l),
   activity:   (l) => getRecentActivity(l),
 };
 

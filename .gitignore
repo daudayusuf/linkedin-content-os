@@ -36,6 +36,11 @@ yarn-error.log*
 # vercel
 .vercel
 
+# temporary scrape/tool outputs
+.firecrawl/
+.tmp/
+.tmp_val
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

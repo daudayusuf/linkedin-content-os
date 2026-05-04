@@ -1,34 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Activity, Play, Terminal, UserPlus, MessageCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
-
-async function getApiError(response: Response): Promise<string> {
-  let message = `Request failed (${response.status})`;
-
-  try {
-    const payload = await response.json();
-    if (typeof payload?.error === 'string' && payload.error.trim()) {
-      message = payload.error;
-    }
-  } catch {}
-
-  if (response.status === 429) {
-    const retryAfter = response.headers.get('retry-after');
-    if (retryAfter) {
-      message = `${message} Retry in ${retryAfter}s.`;
-    }
-  }
-
-  return message;
-}
+import { useState, useEffect, useCallback } from 'react';
+import { Activity, Play, UserPlus, MessageCircle } from 'lucide-react';
+import { usePipelineRunner } from '@/lib/use-pipeline-runner';
+import { PipelineTerminal } from '@/components/PipelineTerminal';
 
 export default function EngagementPipeline() {
   const [targetAccount, setTargetAccount] = useState('');
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<{text: string, time: string}[]>([]);
   const [counts, setCounts] = useState({ notes: 0, comments: 0 });
+
+  const {
+    logs, status, runId,
+    startRun, handleStatusChange, handleDirective, resetRun,
+  } = usePipelineRunner();
+
+  const isRunning = status === 'running' || status === 'paused';
 
   const fetchCounts = () =>
     fetch('/api/notion/records?type=engagement-counts')
@@ -41,57 +27,17 @@ export default function EngagementPipeline() {
   const handleRun = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetAccount) return;
-
-    setIsRunning(true);
-    setLogs([]); // clear old logs
-
-    try {
-      const response = await fetch('/api/pipelines/engagement', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetAccount })
-      });
-
-      if (!response.ok) {
-        throw new Error(await getApiError(response));
-      }
-
-      if (!response.body) throw new Error('No readable stream available');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') {
-              setIsRunning(false);
-              setTargetAccount('');
-              fetchCounts();
-              break;
-            }
-            try {
-              const parsed = JSON.parse(data);
-              const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
-              setLogs(prev => [...prev, { text: parsed.message, time: timeStr }]);
-            } catch (err) {}
-          }
-        }
-      }
-    } catch (error) {
-      const timeStr = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
-      const message = error instanceof Error ? error.message : 'Failed to connect to backend server.';
-      setLogs(prev => [...prev, { text: `❌ ${message}`, time: timeStr }]);
-      setIsRunning(false);
-    }
+    await startRun('/api/pipelines/engagement', { targetAccount }, {
+      onComplete: () => {
+        setTargetAccount('');
+        fetchCounts();
+      },
+    });
   };
+
+  const handleRestart = useCallback(() => {
+    resetRun();
+  }, [resetRun]);
 
   return (
     <div className="p-8 max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -100,7 +46,7 @@ export default function EngagementPipeline() {
           <div className="p-2 bg-emerald-500/20 rounded-lg">
             <Activity className="w-8 h-8 text-emerald-400" />
           </div>
-          Pipeline 3: Engagement Sessions
+          Pipeline 3b: Engagement Session Plans & Writing
         </h1>
         <p className="text-slate-400 mt-2 text-lg">
           Automate scraping target accounts and drafting personalized connection requests & comments.
@@ -171,42 +117,16 @@ export default function EngagementPipeline() {
           </div>
         </div>
 
-        {/* Terminal Output */}
-        <div className="bg-[#0c0c0c] border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[600px]">
-          <div className="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-4 h-4 text-slate-400" />
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Execution Logs</span>
-            </div>
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-rose-500/80"></div>
-              <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
-              <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
-            </div>
-          </div>
-          <div className="flex-1 p-6 font-mono text-sm overflow-y-auto space-y-2">
-            {!isRunning && logs.length === 0 ? (
-              <p className="text-slate-600">Waiting for pipeline trigger...</p>
-            ) : (
-              logs.map((log, i) => (
-                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} key={i} className={`flex gap-3 ${log.text.includes('✅') ? 'text-emerald-400' : 'text-slate-300'}`}>
-                  <span className="text-slate-600 shrink-0">
-                    {log.time}
-                  </span>
-                  <span>{log.text}</span>
-                </motion.div>
-              ))
-            )}
-            {isRunning && (
-              <div className="flex gap-3 text-emerald-400 items-center">
-                <span className="text-slate-600 shrink-0">
-                  {new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' })}
-                </span>
-                <span className="animate-pulse">_</span>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Terminal with task controls */}
+        <PipelineTerminal
+          logs={logs}
+          runId={runId}
+          status={status}
+          accentColor="emerald"
+          onStatusChange={handleStatusChange}
+          onRestart={handleRestart}
+          onDirective={handleDirective}
+        />
       </div>
     </div>
   );

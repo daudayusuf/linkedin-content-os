@@ -3,7 +3,6 @@ import {
   ArrowRight,
   Bot,
   FileText,
-  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { getRecentActivity, getRecentPosts } from "@/lib/notion";
@@ -68,27 +67,13 @@ export default async function Home() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <MetricCard
-          title="Total Impressions"
-          value="--"
-          trend="LinkedIn API needed"
-          isPositive={true}
-          icon={<TrendingUp className="text-emerald-400 w-5 h-5" />}
-        />
-        <MetricCard
-          title="Posts Generated"
+          title="Calendar Posts"
           value={String(postsCount)}
           trend="All time total"
           isPositive={true}
           icon={<FileText className="text-blue-400 w-5 h-5" />}
-        />
-        <MetricCard
-          title="Engagement Rate"
-          value="--"
-          trend="LinkedIn API needed"
-          isPositive={true}
-          icon={<Activity className="text-purple-400 w-5 h-5" />}
         />
         <MetricCard
           title="Active Agents"
@@ -109,6 +94,51 @@ export default async function Home() {
           </h2>
           <div className="space-y-4">
             <PipelineCard
+              name="Pipeline 1: Market, Audience & Competitor Research"
+              status="Ready"
+              lastRun={lastRun('Research')}
+              href="/pipelines/research"
+              description="Deep-dive your market landscape, ICP, and top competitors to produce grounded research that feeds every downstream pipeline."
+              color="from-amber-500/20 to-yellow-500/20"
+              border="border-amber-500/30"
+            />
+            <PipelineCard
+              name="Pipeline 2: Content Strategy Planning and Building"
+              status="Ready"
+              lastRun={lastRun('Strategy')}
+              href="/pipelines/strategy"
+              description="Builds a 7–90 day actionable content strategy grounded in your market research, ICP, and competitor analysis."
+              color="from-green-500/20 to-emerald-500/20"
+              border="border-green-500/30"
+            />
+            <PipelineCard
+              name="Pipeline 3: Content Calendar, Planning & Writing"
+              status="Ready"
+              lastRun={lastRun('Calendar')}
+              href="/pipelines/calendar"
+              description="Converts your content strategy into a complete, publication-ready 30-day LinkedIn calendar — every post fully written."
+              color="from-blue-500/20 to-cyan-500/20"
+              border="border-blue-500/30"
+            />
+            <PipelineCard
+              name="Pipeline 3b: Engagement Session Plans & Writing"
+              status="Ready"
+              lastRun={lastRun('Engagement')}
+              href="/pipelines/engagement"
+              description="Scrape target accounts and draft personalized connection request notes and comment templates."
+              color="from-emerald-500/20 to-teal-500/20"
+              border="border-emerald-500/30"
+            />
+            <PipelineCard
+              name="Pipeline 4: Visuals & Graphics"
+              status="In Development"
+              lastRun={lastRun('Visuals')}
+              href="/pipelines/visuals"
+              description="Generate carousel slides, post banners, and quote cards for your LinkedIn content via Canva API integration."
+              color="from-violet-500/20 to-purple-500/20"
+              border="border-violet-500/30"
+            />
+            <PipelineCard
               name="Pipeline 5: LinkedIn Post & Profile Audit"
               status="Ready"
               lastRun={lastRun('Audit')}
@@ -118,40 +148,13 @@ export default async function Home() {
               border="border-purple-500/30"
             />
             <PipelineCard
-              name="Pipeline 3: Engagement Session Plans"
-              status="Running"
-              lastRun={lastRun('Engagement')}
-              href="/pipelines/engagement"
-              description="Scraping target accounts and drafting personalized connection requests & comments."
-              color="from-emerald-500/20 to-teal-500/20"
-              border="border-emerald-500/30"
-            />
-             <PipelineCard
-              name="Pipeline 1: Content Ideation"
-              status="Idle"
-              lastRun={lastRun('Ideation')}
-              href="/pipelines/ideation"
-              description="Scraping industry news and Perplexity for highly-engaging post concepts."
-              color="from-slate-800 to-slate-800"
-              border="border-slate-700"
-            />
-            <PipelineCard
-              name="Pipeline 2: Post Generation"
-              status="Idle"
-              lastRun={lastRun('Generation')}
-              href="/pipelines/generation"
-              description="Transform rough ideas into high-converting, perfectly formatted LinkedIn posts using Claude."
-              color="from-blue-500/20 to-cyan-500/20"
-              border="border-blue-500/30"
-            />
-            <PipelineCard
-              name="Pipeline 4: Content Repurposing"
-              status="Idle"
-              lastRun={lastRun('Repurposing')}
-              href="/pipelines/repurposing"
-              description="Turn long-form videos, podcasts, and articles into viral LinkedIn posts and carousels."
-              color="from-rose-500/20 to-pink-500/20"
-              border="border-rose-500/30"
+              name="Pipeline 5b: Performance Analysis Snapshot & Metrics"
+              status="Ready"
+              lastRun={lastRun('Performance')}
+              href="/pipelines/performance"
+              description="Aggregate your LinkedIn post metrics, generate weekly and monthly snapshots, and identify your best-performing content patterns."
+              color="from-cyan-500/20 to-sky-500/20"
+              border="border-cyan-500/30"
             />
           </div>
         </div>
@@ -219,6 +222,7 @@ function PipelineCard({ name, status, lastRun, href, description, color, border 
               <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                 status === 'Running' ? 'bg-blue-500/20 text-blue-300 animate-pulse' :
                 status === 'Ready' ? 'bg-emerald-500/20 text-emerald-300' :
+                status === 'In Development' ? 'bg-violet-500/20 text-violet-300' :
                 'bg-slate-500/20 text-slate-300'
               }`}>
                 {status}

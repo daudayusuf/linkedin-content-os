@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { tasks } from '@trigger.dev/sdk/v3';
 import { saveAuditReport } from '@/lib/notion';
+import { createRun, deleteRun, waitWhilePaused, buildDirectiveContext } from '@/lib/pipeline-state';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -16,17 +17,28 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: 'Target URL is required' }), { status: 400 });
     }
 
+    // Generate a unique run ID for task control
+    const runId = `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    createRun(runId);
+
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         const send = (msg: string) =>
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ message: msg })}\n\n`));
 
+        // Send the runId as the very first event
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ runId })}\n\n`));
+
         try {
           const username = extractUsername(targetUrl);
           send(`Initializing Pipeline 5: LinkedIn Audit & Strategy...`);
           send(`Target profile: linkedin.com/in/${username}`);
           send('');
+
+          // === Check for pause/stop before Step 1 ===
+          await waitWhilePaused(runId, send);
+
           send('Step 1/5 — Fetching profile data via ScrapingDog...');
 
           // ── Step 1: Fetch LinkedIn profile ─────────────────────────────────
@@ -48,6 +60,9 @@ export async function POST(request: Request) {
           } catch (e: any) {
             send(`⚠ Could not fetch profile (${e.message}). Proceeding with URL-only context.`);
           }
+
+          // === Check for pause/stop before Step 2 ===
+          await waitWhilePaused(runId, send);
 
           // ── Step 2: Fetch recent posts ──────────────────────────────────────
           send('');
@@ -75,6 +90,9 @@ export async function POST(request: Request) {
             send(`⚠ Could not fetch posts (${e.message}). Analysis will use profile data only.`);
           }
 
+          // === Check for pause/stop before Step 3 ===
+          await waitWhilePaused(runId, send);
+
           // ── Step 3: Claude Analysis ─────────────────────────────────────────
           send('');
           send('Step 3/5 — Scoring profile across 6 dimensions...');
@@ -97,6 +115,7 @@ Current Role: ${profileData.currentPosition?.[0]?.title || 'N/A'} at ${profileDa
               }).join('\n')
             : 'No posts fetched — base analysis on profile data and URL only.';
 
+          const directiveCtx1 = buildDirectiveContext(runId);
           const analysisResponse = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 2500,
@@ -110,7 +129,7 @@ ${profileContext}
 
 RECENT POSTS (up to 10):
 ${postsContext}
-
+${directiveCtx1}
 Perform a full 6-dimension LinkedIn audit. For each dimension, give a score out of 10, a one-sentence observation, and one specific improvement action.
 
 DIMENSIONS TO SCORE:
@@ -153,10 +172,14 @@ EXECUTIVE SUMMARY:
           for (const line of analysis.split('\n')) send(line);
           send('════════════════════════════════════════════════');
 
+          // === Check for pause/stop before Step 4 ===
+          await waitWhilePaused(runId, send);
+
           // ── Step 4: 30-day strategy ─────────────────────────────────────────
           send('');
           send('Step 4/5 — Generating 30-day content strategy...');
 
+          const directiveCtx2 = buildDirectiveContext(runId);
           const strategyResponse = await client.messages.create({
             model: 'claude-sonnet-4-6',
             max_tokens: 1500,
@@ -167,7 +190,7 @@ EXECUTIVE SUMMARY:
 
 PROFILE CONTEXT: ${profileContext}
 AUDIT SUMMARY: ${analysis.split('EXECUTIVE SUMMARY:')[1]?.slice(0, 300) || 'Profile needs improvement across all dimensions.'}
-
+${directiveCtx2}
 Generate a 30-day content plan with:
 - Week 1 focus theme and 3 post ideas
 - Week 2 focus theme and 3 post ideas
@@ -187,6 +210,9 @@ Keep each post idea as a specific, actionable hook (under 15 words). Format clea
           send('════════════════ 30-DAY STRATEGY ═══════════════');
           for (const line of strategy.split('\n')) send(line);
           send('════════════════════════════════════════════════');
+
+          // === Check for pause/stop before Step 5 ===
+          await waitWhilePaused(runId, send);
 
           // ── Step 5: Save to Notion ──────────────────────────────────────────
           send('');
@@ -230,8 +256,16 @@ Keep each post idea as a specific, actionable hook (under 15 words). Format clea
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
           controller.close();
         } catch (err: any) {
-          send(`❌ Error: ${err.message}`);
-          controller.close();
+          if (err.message === 'PIPELINE_STOPPED') {
+            send('⏹  Pipeline stopped by user');
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          } else {
+            send(`❌ Error: ${err.message}`);
+            controller.close();
+          }
+        } finally {
+          deleteRun(runId);
         }
       },
     });

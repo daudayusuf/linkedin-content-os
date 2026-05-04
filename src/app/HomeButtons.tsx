@@ -15,7 +15,7 @@ export function HomeButtons() {
         Refresh Data
       </button>
       <button
-        onClick={() => router.push('/pipelines/ideation')}
+        onClick={() => router.push('/pipelines/calendar')}
         className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2"
       >
         New Campaign <ArrowRight className="w-4 h-4" />

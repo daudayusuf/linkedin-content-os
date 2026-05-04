@@ -2,31 +2,29 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  Home, 
-  LayoutDashboard, 
-  PenTool, 
-  MessageSquare, 
-  RefreshCcw, 
-  Activity, 
-  ShieldCheck, 
+import {
+  Home,
+  LayoutDashboard,
+  Search,
+  Calendar,
+  Activity,
+  ShieldCheck,
   Map,
   Image,
   BarChart2,
-  Bot, 
-  User, 
-  Settings 
+  Bot,
+  User,
+  Settings
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Content Ideation', href: '/pipelines/ideation', icon: PenTool },
+  { name: 'Market & Research', href: '/pipelines/research', icon: Search },
   { name: 'Content Strategy', href: '/pipelines/strategy', icon: Map },
-  { name: 'Post Generation', href: '/pipelines/generation', icon: MessageSquare },
+  { name: 'Content Calendar', href: '/pipelines/calendar', icon: Calendar },
   { name: 'Engagement Plans', href: '/pipelines/engagement', icon: Activity },
-  { name: 'Repurposing', href: '/pipelines/repurposing', icon: RefreshCcw },
   { name: 'Visuals & Graphics', href: '/pipelines/visuals', icon: Image },
   { name: 'Profile Audit', href: '/pipelines/audit', icon: ShieldCheck },
   { name: 'Performance Analysis', href: '/pipelines/performance', icon: BarChart2 },
