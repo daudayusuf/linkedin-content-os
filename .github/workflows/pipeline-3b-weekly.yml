@@ -1,0 +1,149 @@
+# Workflow Audit Notes:
+# - Required GitHub Secrets:
+#   ANTHROPIC_API_KEY, OPENROUTER_API_KEY, OPENROUTER_BASE_URL,
+#   NOTION_API_KEY, NOTION_PARENT_PAGE_ID, NOTION_VERSION,
+#   GOOGLE_CREDENTIALS_JSON, GOOGLE_TOKEN_JSON (optional),
+#   GMAIL_TO_EMAIL, GMAIL_FROM_EMAIL,
+#   GOOGLE_CALENDAR_ID, GOOGLE_TASKLIST_NAME, GOOGLE_TIMEZONE,
+#   ENGAGEMENT_DAYS, MORNING_TIME, AFTERNOON_TIME, EVENING_TIME,
+#   ENGAGEMENT_MODEL, RESEARCH_MODEL, REVIEW_MODEL,
+#   REQUEST_TIMEOUT, RETRY_COUNT, MAX_TOKENS, REVIEW_MAX_TOKENS.
+# - Pipeline path check: Correct. This workflow runs from
+#   Full Content Pipeline/3b. Engagement Session Plans & Writing/
+#   and executes tools/run_pipeline.py.
+# - Broken steps fixed:
+#   1) Added missing weekly schedule cron trigger.
+#   2) Added required-secret validation for clearer failures.
+#   3) Always creates .tmp/google_token.json so GOOGLE_TOKEN_FILE path exists.
+
+name: Pipeline 3b Weekly Runner
+
+on:
+  schedule:
+    - cron: "0 9 * * 6"
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "ISO week in YYYY-WW format (optional)"
+        required: false
+        default: ""
+
+jobs:
+  run-pipeline-3b:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          cd "Full Content Pipeline/3b. Engagement Session Plans & Writing"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_BASE_URL: ${{ secrets.OPENROUTER_BASE_URL }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_VERSION: ${{ secrets.NOTION_VERSION }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+          GMAIL_TO_EMAIL: ${{ secrets.GMAIL_TO_EMAIL }}
+          GMAIL_FROM_EMAIL: ${{ secrets.GMAIL_FROM_EMAIL }}
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
+          GOOGLE_TASKLIST_NAME: ${{ secrets.GOOGLE_TASKLIST_NAME }}
+          GOOGLE_TIMEZONE: ${{ secrets.GOOGLE_TIMEZONE }}
+          ENGAGEMENT_DAYS: ${{ secrets.ENGAGEMENT_DAYS }}
+          MORNING_TIME: ${{ secrets.MORNING_TIME }}
+          AFTERNOON_TIME: ${{ secrets.AFTERNOON_TIME }}
+          EVENING_TIME: ${{ secrets.EVENING_TIME }}
+          ENGAGEMENT_MODEL: ${{ secrets.ENGAGEMENT_MODEL }}
+          RESEARCH_MODEL: ${{ secrets.RESEARCH_MODEL }}
+          REVIEW_MODEL: ${{ secrets.REVIEW_MODEL }}
+          REQUEST_TIMEOUT: ${{ secrets.REQUEST_TIMEOUT }}
+          RETRY_COUNT: ${{ secrets.RETRY_COUNT }}
+          MAX_TOKENS: ${{ secrets.MAX_TOKENS }}
+          REVIEW_MAX_TOKENS: ${{ secrets.REVIEW_MAX_TOKENS }}
+        run: |
+          required_vars=(
+            ANTHROPIC_API_KEY OPENROUTER_API_KEY OPENROUTER_BASE_URL
+            NOTION_API_KEY NOTION_PARENT_PAGE_ID NOTION_VERSION
+            GOOGLE_CREDENTIALS_JSON
+            GMAIL_TO_EMAIL GMAIL_FROM_EMAIL
+            GOOGLE_CALENDAR_ID GOOGLE_TASKLIST_NAME GOOGLE_TIMEZONE
+            ENGAGEMENT_DAYS MORNING_TIME AFTERNOON_TIME EVENING_TIME
+            ENGAGEMENT_MODEL RESEARCH_MODEL REVIEW_MODEL
+            REQUEST_TIMEOUT RETRY_COUNT MAX_TOKENS REVIEW_MAX_TOKENS
+          )
+
+          missing=()
+          for var in "${required_vars[@]}"; do
+            if [ -z "${!var}" ]; then
+              missing+=("$var")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required GitHub secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Prepare Google credential files
+        shell: bash
+        run: |
+          PIPELINE_DIR="Full Content Pipeline/3b. Engagement Session Plans & Writing"
+          mkdir -p "$PIPELINE_DIR/.tmp"
+          printf "%s" "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > "$PIPELINE_DIR/.tmp/google_credentials.json"
+          if [ -n "${{ secrets.GOOGLE_TOKEN_JSON }}" ]; then
+            printf "%s" "${{ secrets.GOOGLE_TOKEN_JSON }}" > "$PIPELINE_DIR/.tmp/google_token.json"
+          else
+            printf "{}" > "$PIPELINE_DIR/.tmp/google_token.json"
+          fi
+
+      - name: Run Pipeline 3b
+        shell: bash
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_BASE_URL: ${{ secrets.OPENROUTER_BASE_URL }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_VERSION: ${{ secrets.NOTION_VERSION }}
+          GMAIL_TO_EMAIL: ${{ secrets.GMAIL_TO_EMAIL }}
+          GMAIL_FROM_EMAIL: ${{ secrets.GMAIL_FROM_EMAIL }}
+          GOOGLE_CREDENTIALS_FILE: .tmp/google_credentials.json
+          GOOGLE_TOKEN_FILE: .tmp/google_token.json
+          GOOGLE_CALENDAR_ID: ${{ secrets.GOOGLE_CALENDAR_ID }}
+          GOOGLE_TASKLIST_NAME: ${{ secrets.GOOGLE_TASKLIST_NAME }}
+          GOOGLE_TIMEZONE: ${{ secrets.GOOGLE_TIMEZONE }}
+          ENGAGEMENT_DAYS: ${{ secrets.ENGAGEMENT_DAYS }}
+          MORNING_TIME: ${{ secrets.MORNING_TIME }}
+          AFTERNOON_TIME: ${{ secrets.AFTERNOON_TIME }}
+          EVENING_TIME: ${{ secrets.EVENING_TIME }}
+          WEEK_GEN_DAY: SAT
+          ENGAGEMENT_MODEL: ${{ secrets.ENGAGEMENT_MODEL }}
+          RESEARCH_MODEL: ${{ secrets.RESEARCH_MODEL }}
+          REVIEW_MODEL: ${{ secrets.REVIEW_MODEL }}
+          REQUEST_TIMEOUT: ${{ secrets.REQUEST_TIMEOUT }}
+          RETRY_COUNT: ${{ secrets.RETRY_COUNT }}
+          MAX_TOKENS: ${{ secrets.MAX_TOKENS }}
+          REVIEW_MAX_TOKENS: ${{ secrets.REVIEW_MAX_TOKENS }}
+        run: |
+          cd "Full Content Pipeline/3b. Engagement Session Plans & Writing"
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            python tools/run_pipeline.py --week "${{ github.event.inputs.week }}"
+          else
+            python tools/run_pipeline.py
+          fi
